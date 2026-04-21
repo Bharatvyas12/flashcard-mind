@@ -9,9 +9,14 @@ const pdfParseModule = require("pdf-parse");
 const pdfParse = typeof pdfParseModule === "function" ? pdfParseModule : (pdfParseModule.default || pdfParseModule.PDFParse || pdfParseModule);
 // @google/genai SDK removed due to fetch conflict in Next.js
 
+export const maxDuration = 60; // Max duration to 60s to prevent Vercel Timeout
+
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
+    const rawKey = process.env.GEMINI_API_KEY || "";
+    const apiKey = rawKey.replace(/^GEMINI_API_KEY=/i, "").replace(/["']/g, "").trim();
+
+    if (!apiKey) {
       return NextResponse.json(
         { error: "Gemini API Key is missing. Please add GEMINI_API_KEY to your .env.local file." },
         { status: 401 }
@@ -65,7 +70,7 @@ Text to generate cards from:
 ${text.substring(0, 50000)} // Limiting text to avoid token limits if PDF is huge
 `;
 
-    const apiResult = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+    const apiResult = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -78,7 +83,12 @@ ${text.substring(0, 50000)} // Limiting text to avoid token limits if PDF is hug
     if (!apiResult.ok) {
       const errorText = await apiResult.text();
       console.error("Gemini Native fetch error", errorText);
-      throw new Error("Failed to communicate with AI generation API");
+      let parsedError = "Unknown Google AI Error";
+      try {
+        const jsonError = JSON.parse(errorText);
+        parsedError = jsonError.error?.message || errorText;
+      } catch(e) {}
+      throw new Error(`Google API Rejected Key: ${parsedError}`);
     }
 
     const data = await apiResult.json();
