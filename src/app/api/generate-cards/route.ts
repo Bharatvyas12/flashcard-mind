@@ -70,7 +70,7 @@ Text to generate cards from:
 ${text.substring(0, 50000)} // Limiting text to avoid token limits if PDF is huge
 `;
 
-    const apiResult = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    const apiResult = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -87,8 +87,17 @@ ${text.substring(0, 50000)} // Limiting text to avoid token limits if PDF is hug
       try {
         const jsonError = JSON.parse(errorText);
         parsedError = jsonError.error?.message || errorText;
+        
+        // Make the rate limit error more user-friendly
+        if (parsedError.includes("Quota exceeded") && parsedError.includes("retry in")) {
+          const secondsMatch = parsedError.match(/retry in ([\d\.]+)s/);
+          const seconds = secondsMatch ? Math.ceil(parseFloat(secondsMatch[1])) : 60;
+          parsedError = `Gemini Free Tier rate limit reached. Please wait ${seconds} seconds before trying again. (This is a per-minute limit, not your daily limit).`;
+        } else if (parsedError.includes("Quota exceeded")) {
+           parsedError = `Gemini Free Tier limit reached. Please wait a minute and try again.`;
+        }
       } catch(e) {}
-      throw new Error(`Google API Rejected Key: ${parsedError}`);
+      throw new Error(`Google API Error: ${parsedError}`);
     }
 
     const data = await apiResult.json();
