@@ -22,18 +22,21 @@ export default function Dashboard() {
   const fetchData = async () => {
     try {
       const [decksRes, statsRes] = await Promise.all([
-        fetch("/api/decks"),
-        fetch("/api/stats")
+        fetch("/api/decks").catch(() => null),
+        fetch("/api/stats").catch(() => null)
       ]);
       
-      const decksData = await decksRes.json();
-      const statsData = await statsRes.json();
+      const decksData = decksRes ? await decksRes.json().catch(() => ({})) : {};
+      const statsData = statsRes ? await statsRes.json().catch(() => null) : null;
       
       let finalDecks = decksData.decks || [];
+      let finalStats = statsData && !statsData.error ? statsData : { cardsPracticed: 0, streak: 0, masteredCount: 0, dueCount: 0, shakyCount: 0 };
       
       // Inject Mock deck for previewers
       const storedCards = localStorage.getItem("mock_cards");
       const storedDeckName = localStorage.getItem("mock_deck_name");
+      const storedStats = localStorage.getItem("mock_stats");
+      
       if (storedCards && storedDeckName) {
          try {
            const parsed = JSON.parse(storedCards);
@@ -44,11 +47,32 @@ export default function Dashboard() {
                ...finalDecks
              ];
            }
+           
+           // Calculate mock stats
+           const mastered = parsed.filter((c:any) => c.interval > 10).length;
+           const shaky = parsed.filter((c:any) => c.repetitions > 0 && c.interval < 1).length;
+           const due = parsed.filter((c:any) => !c.next_review || new Date(c.next_review) <= new Date()).length;
+           
+           finalStats.masteredCount = (finalStats.masteredCount || 0) + mastered;
+           finalStats.shakyCount = (finalStats.shakyCount || 0) + shaky;
+           finalStats.dueCount = (finalStats.dueCount || 0) + due;
+           
          } catch(e) { console.error("Parse mock cards error", e) }
+      }
+      
+      if (storedStats) {
+        try {
+          const pStats = JSON.parse(storedStats);
+          // Only override if real stats are missing or 0
+          if (!finalStats.cardsPracticed) {
+            finalStats.cardsPracticed = pStats.cardsPracticed || 0;
+            finalStats.streak = pStats.streak || 0;
+          }
+        } catch(e) {}
       }
 
       setDecks(finalDecks);
-      if (statsData) setStats(statsData);
+      setStats(finalStats);
     } catch (err) {
       console.error("Failed to load dashboard data", err);
     } finally {

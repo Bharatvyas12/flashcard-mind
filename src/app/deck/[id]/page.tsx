@@ -7,7 +7,7 @@ import Flashcard from "@/components/Flashcard";
 import { WeakTopics } from "@/components/WeakTopics";
 import ConfettiEffect from "@/components/ConfettiEffect";
 import { Card, Deck } from "@/types";
-import { Rating } from "@/lib/sm2";
+import { Rating, calculateNextReview } from "@/lib/sm2";
 
 export default function PracticeMode({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -77,6 +77,8 @@ export default function PracticeMode({ params }: { params: Promise<{ id: string 
     // Track stats for this session
     setSessionRatings(prev => ({ ...prev, [rating]: prev[rating] + 1 }));
     
+    const currentCard = cards[currentIndex];
+
     // Optimistically update UI by moving to the next card safely
     setCurrentIndex(prev => {
       const nextIndex = prev + 1;
@@ -88,12 +90,34 @@ export default function PracticeMode({ params }: { params: Promise<{ id: string 
     });
 
     try {
-      // Send update to server (fire and forget)
-      if (deckId !== "mock-deck-id") {
+      if (deckId === "mock-deck-id") {
+        // Update local mock cards
+        const updates = calculateNextReview(currentCard, rating);
+        const storedCards = localStorage.getItem("mock_cards");
+        if (storedCards) {
+          const parsed = JSON.parse(storedCards);
+          // Find and update the exact card in the persistent store
+          const updatedParsed = parsed.map((c: any, idx: number) => {
+             if (`mock-${idx}` === currentCard.id) {
+               return { ...c, ...updates };
+             }
+             return c;
+          });
+          localStorage.setItem("mock_cards", JSON.stringify(updatedParsed));
+        }
+        
+        // Also increment local stats
+        const mockStatsStr = localStorage.getItem("mock_stats");
+        let mockStats = mockStatsStr ? JSON.parse(mockStatsStr) : { cardsPracticed: 0, streak: 1, lastPracticed: new Date().toISOString() };
+        mockStats.cardsPracticed += 1;
+        mockStats.lastPracticed = new Date().toISOString();
+        localStorage.setItem("mock_stats", JSON.stringify(mockStats));
+      } else {
+        // Send update to server (fire and forget)
         await fetch(`/api/cards/${deckId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cardId: cards[currentIndex].id, rating }),
+          body: JSON.stringify({ cardId: currentCard.id, rating }),
         });
       }
     } catch (err) {

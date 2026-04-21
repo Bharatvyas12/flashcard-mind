@@ -63,13 +63,19 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
 
   // Analytics Math
   const totalCards = cards.length;
-  // Simulated difficulty metrics for report (in a real app, query `interval` from sm2 algorithm)
   const mastered = cards.filter(c => (c.interval || 0) > 10).length;
-  const learning = cards.filter(c => (c.interval || 0) >= 1 && (c.interval || 0) <= 10).length;
-  const shaking = cards.filter(c => (c.interval || 0) < 1).length;
+  // Unstudied or interval 1-10 are 'learning'
+  const learning = cards.filter(c => ((c.interval || 0) >= 1 && (c.interval || 0) <= 10) || !(c.repetitions > 0)).length;
+  // Shaky means it has been studied (repetitions > 0) but interval is stuck at < 1
+  const shaking = cards.filter(c => (c.interval || 0) < 1 && (c.repetitions || 0) > 0).length;
 
   const getDistinctTopics = () => {
-    const list = cards.filter(c => (c.interval || 0) < 1).map(c => c.topic).filter(Boolean) as string[];
+    // Look for weak topics
+    let list = cards.filter(c => (c.interval || 0) < 1 && (c.repetitions || 0) > 0).map(c => c.topic).filter(Boolean) as string[];
+    // Fallback: if no weak topics yet but still learning, suggest general topics to review
+    if (list.length === 0 && learning > 0) {
+      list = cards.filter(c => !(c.interval > 10)).map(c => c.topic).filter(Boolean) as string[];
+    }
     return [...new Set(list)].slice(0, 3);
   };
   
