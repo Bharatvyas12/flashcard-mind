@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseUrl } from "@/lib/supabase";
 
 if (typeof global !== "undefined" && typeof global.DOMMatrix === "undefined") {
   (global as any).DOMMatrix = class DOMMatrix {};
@@ -117,7 +117,7 @@ ${text.substring(0, 50000)} // Limiting text to avoid token limits if PDF is hug
     }
 
     // Save to Supabase (only if configured)
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL === "https://placeholder-project.supabase.co") {
+    if (supabaseUrl === "https://placeholder-project.supabase.co" || supabaseUrl.trim() === "") {
       // Return the generated cards directly to the frontend for local preview
       return NextResponse.json({ 
         success: true, 
