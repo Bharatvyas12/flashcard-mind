@@ -36,7 +36,7 @@ export default function PracticeMode({ params }: { params: Promise<{ id: string 
         if (storedCards) {
           const parsed = JSON.parse(storedCards).map((c: any, i: number) => ({ ...c, id: `mock-${i}` }));
           setCards(parsed);
-          setDeck({ id: "mock-deck-id", name: storedName || "Mock Deck Preview", card_count: parsed.length, created_at: new Date().toISOString() });
+          setDeck({ id: "mock-deck-id", name: storedName || "Mock Deck Preview", card_count: parsed.length, created_at: new Date().toISOString(), last_studied: new Date().toISOString() });
           setLoading(false);
           return;
         }
