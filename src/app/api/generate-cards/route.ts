@@ -70,7 +70,7 @@ Text to generate cards from:
 ${text.substring(0, 50000)} // Limiting text to avoid token limits if PDF is huge
 `;
 
-    const apiResult = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    const apiResult = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
